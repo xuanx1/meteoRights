@@ -15,13 +15,13 @@ function parseCSV(text) {
 
 // Load and process meteorite and fireball data
 async function loadMeteoriteAndFireballData() {
-    // Load Meteorite Landings
-    const meteoriteResp = await fetch('../data/Meteorite_Landings.csv');
+    // Load Meteorite Landings - use relative path for GitHub Pages
+    const meteoriteResp = await fetch('./data/Meteorite_Landings.csv');
     const meteoriteText = await meteoriteResp.text();
     const meteorites = parseCSV(meteoriteText);
 
-    // Load Fireball Reports
-    const fireballResp = await fetch('../data/Fireball_And_Bolide_Reports_rows.csv');
+    // Load Fireball Reports - use relative path for GitHub Pages
+    const fireballResp = await fetch('./data/Fireball_And_Bolide_Reports_rows.csv');
     const fireballText = await fireballResp.text();
     const fireballs = parseCSV(fireballText);
 
