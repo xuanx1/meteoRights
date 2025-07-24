@@ -66,7 +66,7 @@
     }
   </style>
 
-  <script src="//cdn.jsdelivr.net/npm/globe.gl"></script>
+  <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
   <!--<script src="../../dist/globe.gl.js"></script>-->
 </head>
 
@@ -309,8 +309,8 @@
     const tooltip = createTooltip();
 
     const world = new Globe(document.getElementById('globeViz'), { animateIn: false })
-      .globeImageUrl('//cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
-      .bumpImageUrl('//cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png');
+      .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
+      .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png');
 
     // Auto-rotate
     world.controls().autoRotate = true;
@@ -1161,7 +1161,7 @@
     loadMeteoriteAndFireballData();
 
     // Add clouds sphere
-    const CLOUDS_IMG_URL = 'data/clouds.png';
+    const CLOUDS_IMG_URL = './data/clouds.png';
     const CLOUDS_ALT = 0.004;
     const CLOUDS_ROTATION_SPEED = -0.006; // deg/frame
 
