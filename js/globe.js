@@ -161,6 +161,9 @@ async function loadMeteoriteAndFireballData() {
     // Load ISS position data
     await loadISSPosition();
     
+    // Load Tiangong position data
+    await loadTiangongPosition();
+    
     // Load astronaut data
     await loadAstronautData();
 }
@@ -214,6 +217,59 @@ async function loadISSPosition() {
         console.log('✅ ISS fallback data sent to globe');
     } else {
         console.log('❌ ISS data ready but no callback function set');
+    }
+}
+
+// Function to fetch and update Tiangong position
+async function loadTiangongPosition() {
+    console.log('🏗️ Loading Tiangong position...');
+    
+    try {
+        // Try to fetch Tiangong position from satellite tracking API
+        // Note: Tiangong (CSS) NORAD ID is 48274
+        const response = await fetch('https://api.wheretheiss.at/v1/satellites/48274');
+        const data = await response.json();
+        
+        console.log('Tiangong API Response:', data);
+        
+        if (data.latitude && data.longitude) {
+            const tiangongData = {
+                lat: parseFloat(data.latitude),
+                lng: parseFloat(data.longitude),
+                altitude: 340, // Tiangong altitude in km (lower than ISS)
+                timestamp: Date.now() / 1000
+            };
+            
+            console.log('Tiangong Position from API:', tiangongData);
+            
+            // Call Tiangong callback if set
+            if (typeof addTiangongToGlobe === 'function') {
+                addTiangongToGlobe(tiangongData);
+            } else {
+                console.log('Tiangong data ready but no callback set:', tiangongData);
+            }
+            return;
+        }
+    } catch (error) {
+        console.warn('Failed to fetch Tiangong position from API:', error);
+    }
+    
+    // Fallback: Create a default Tiangong position for demonstration
+    console.log('Using fallback Tiangong position...');
+    const fallbackTiangong = {
+        lat: 35.8617,  // Over China
+        lng: 104.1954,
+        altitude: 340,
+        timestamp: Date.now() / 1000
+    };
+    
+    console.log('Fallback Tiangong Position:', fallbackTiangong);
+    
+    if (typeof addTiangongToGlobe === 'function') {
+        addTiangongToGlobe(fallbackTiangong);
+        console.log('✅ Tiangong fallback data sent to globe');
+    } else {
+        console.log('❌ Tiangong data ready but no callback function set');
     }
 }
 
@@ -284,6 +340,7 @@ async function loadAstronautData() {
 let addFireballMarkersToGlobe = null;
 let addMeteoriteMarkersToGlobe = null;
 let addISSToGlobe = null;
+let addTiangongToGlobe = null;
 let addAstronautPanelToPage = null;
 
 function setAddFireballMarkersToGlobe(fn) {
@@ -295,8 +352,11 @@ function setAddMeteoriteMarkersToGlobe(fn) {
 function setAddISSToGlobe(fn) {
   addISSToGlobe = fn;
 }
+function setAddTiangongToGlobe(fn) {
+  addTiangongToGlobe = fn;
+}
 function setAddAstronautPanelToPage(fn) {
   addAstronautPanelToPage = fn;
 }
 
-export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddAstronautPanelToPage };
+export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddTiangongToGlobe, setAddAstronautPanelToPage };

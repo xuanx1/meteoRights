@@ -40,6 +40,41 @@
       font-size: 16px;
     }
     
+    /* Tiangong Toggle Button Styles */
+    #tiangong-toggle-button {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 1000;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: #815e06;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+      transition: all 0.3s ease;
+      display: none; /* Hidden until Tiangong is loaded */
+    }
+    
+    #tiangong-toggle-button:hover {
+      background: linear-gradient(135deg, #FFA500, #FF8C00);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    }
+    
+    #tiangong-toggle-button:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 10px rgba(255, 215, 0, 0.3);
+    }
+    
+    #tiangong-toggle-button .tiangong-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+    
     /* Legend styles - adapted from Leaflet control */
     .info.legend {
       position: fixed;
@@ -59,7 +94,7 @@
     /* Astronaut Panel Styles */
     .astronaut-panels-container {
       position: fixed;
-      bottom: 20px;
+      bottom: 35px;
       left: 20px;
       z-index: 1000;
       display: flex;
@@ -155,6 +190,11 @@
     <span class="iss-icon">🛰️ Zoom to ISS</span>
   </button>
 
+  <!-- Tiangong Toggle Button -->
+  <button id="tiangong-toggle-button" onclick="toggleTiangongView()">
+    <span class="tiangong-icon">🚀 Zoom to Tiangong</span>
+  </button>
+
   <!-- Legend adapted from Leaflet control -->
   <div class="info legend" id="magnitude-legend"></div>
 
@@ -163,9 +203,26 @@
     <!-- Panels will be dynamically created here -->
   </div>
 
+  <!-- Live Data Disclaimer -->
+  <div id="live-data-disclaimer" style="
+    position: fixed;
+    bottom: 15px;
+    left: 20px;
+    z-index: 1000;
+    color: rgba(255, 255, 255, 0.6);
+    font-family: 'Open Sans', Arial, sans-serif;
+    font-size: 10px;
+    font-style: italic;
+    display: none;
+    max-width: 300px;
+    line-height: 1.3;
+  ">
+    * Astronauts and Spacecraft Positions Are Real-time
+  </div>
+
   <script type="module">
     import * as THREE from 'https://esm.sh/three';
-    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddAstronautPanelToPage } from './js/globe.js';
+    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddTiangongToGlobe, setAddAstronautPanelToPage } from './js/globe.js';
 
     // Utility functions for hover display
     function formatScientificNotation(value) {
@@ -405,8 +462,9 @@
     mainTitle.style.color = "white";
 
     const subTitle = document.createElement("p");
-    subTitle.textContent = "and the ISS too.";
+    subTitle.innerHTML = "The ISS and... <br> Tiangong too.";
     subTitle.style.margin = "5px 0 0 0";
+    subTitle.style.lineHeight = "1.5";
     subTitle.style.fontSize = "18.5px";
     subTitle.style.color = "#fed86b";
     subTitle.style.opacity = "0.9";
@@ -425,6 +483,9 @@
 
     // Global variable to track ISS view state
     let isISSView = false;
+    
+    // Global variable to track Tiangong view state
+    let isTiangongView = false;
 
     // Global function to toggle between ISS view and Earth view
     window.toggleISSView = function() {
@@ -509,12 +570,96 @@
       }
     };
 
+    // Global function to toggle between Tiangong view and Earth view
+    window.toggleTiangongView = function() {
+      const toggleButton = document.getElementById('tiangong-toggle-button');
+      
+      if (!isTiangongView) {
+        // Zoom to Tiangong
+        if (tiangongObject && tiangongObject.mesh) {
+          console.log('🏗️ Starting Tiangong zoom and tracking...');
+          console.log('🏗️ Tiangong object found:', tiangongObject);
+          console.log('🏗️ Tiangong mesh position:', tiangongObject.mesh.position);
+          console.log('🏗️ Original Tiangong coordinates:', tiangongObject.originalLat, tiangongObject.originalLng);
+          
+          // Enable Tiangong tracking mode
+          tiangongObject.isTracking = true;
+          
+          // Stop auto-rotation while tracking Tiangong
+          world.controls().autoRotate = false;
+          
+          // Use the ORIGINAL Tiangong coordinates for initial zoom
+          console.log('🏗️ Zooming to ORIGINAL Tiangong coordinates:', tiangongObject.originalLat, tiangongObject.originalLng);
+          
+          // Zoom directly to original Tiangong coordinates
+          world.pointOfView({
+            lat: tiangongObject.originalLat,
+            lng: tiangongObject.originalLng,
+            altitude: 0.8 // Good distance to see the detailed Tiangong model
+          }, 2000); // 2 second transition
+          
+          // Update button text and state
+          isTiangongView = true;
+          toggleButton.innerHTML = '<span class="tiangong-icon">🌍</span>Zoom Out to Earth';
+          
+          // Fade out titles when zooming to Tiangong
+          const titleContainer = document.querySelector("div[style*='position: absolute'][style*='top: 20px'][style*='left: 20px']");
+          if (titleContainer) {
+            titleContainer.style.transition = 'opacity 1.5s ease';
+            titleContainer.style.opacity = '0';
+          }
+          
+          console.log('✅ Zoomed to Tiangong coordinates and ENABLED tracking - camera will follow Tiangong station');
+        } else {
+          console.warn('⚠️ Tiangong not available for tracking');
+          console.log('Debug: tiangongObject =', tiangongObject);
+          alert('Tiangong not found! Check console for debugging info.');
+        }
+      } else {
+        // Zoom out to Earth
+        console.log('🌍 Stopping Tiangong tracking and resetting to default view...');
+        
+        // DISABLE Tiangong tracking mode
+        if (tiangongObject) {
+          tiangongObject.isTracking = false;
+          console.log('🏗️ Tiangong tracking mode DISABLED');
+        }
+        
+        // Reset to default global view
+        world.pointOfView({
+          lat: 0,
+          lng: 0,
+          altitude: 2.0 // Higher altitude = zoomed out view of whole Earth
+        }, 1500); // 1.5 second transition
+        
+        // Update button text and state
+        isTiangongView = false;
+        toggleButton.innerHTML = '<span class="tiangong-icon">🚀</span>Zoom to Tiangong';
+        
+        // Fade in titles when zooming out to Earth
+        const titleContainer = document.querySelector("div[style*='position: absolute'][style*='top: 20px'][style*='left: 20px']");
+        if (titleContainer) {
+          titleContainer.style.transition = 'opacity 1.5s ease';
+          titleContainer.style.opacity = '1';
+        }
+        
+        // Reset auto-rotation speed
+        setTimeout(() => {
+          world.controls().autoRotate = true;
+          world.controls().autoRotateSpeed = 0.35; // Default rotation speed
+        }, 1800);
+        
+        console.log('✅ Reset to global view - camera no longer follows Tiangong station');
+      }
+    };
+
     // Raycaster for hover detection
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let fireballSpheres = []; // Store references to fireball spheres with their data
     let meteoriteSpheres = []; // Store references to meteorite spheres with their data
     let issObject = null; // Store ISS object reference
+    let tiangongObject = null; // Store Tiangong object reference
 
     // Mouse move handler for hover
     function onMouseMove(event) {
@@ -535,6 +680,12 @@
         issIntersects = raycaster.intersectObject(issObject.mesh);
       }
 
+      // Check for Tiangong intersection
+      let tiangongIntersects = [];
+      if (tiangongObject) {
+        tiangongIntersects = raycaster.intersectObject(tiangongObject.mesh);
+      }
+
       if (fireballIntersects.length > 0) {
         const intersectedFireball = fireballSpheres.find(f => f.sphere === fireballIntersects[0].object);
         if (intersectedFireball) {
@@ -547,6 +698,8 @@
         }
       } else if (issIntersects.length > 0) {
         showISSTooltip(event, issObject.data);
+      } else if (tiangongIntersects.length > 0) {
+        showTiangongTooltip(event, tiangongObject.data);
       } else {
         hideTooltip();
       }
@@ -685,6 +838,50 @@
         }
       } catch (error) {
         console.warn('Failed to update location in ISS tooltip:', error);
+      }
+    }
+
+    // Show tooltip with Tiangong information
+    async function showTiangongTooltip(event, tiangongData) {
+      const speed = 27000; // Tiangong orbital speed in km/h (slightly slower than ISS)
+      const orbitTime = 90; // Tiangong orbit time in minutes
+      
+      tooltip.innerHTML = `
+        <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🏗️ Tiangong Space Station</div>
+        <div><span style="color: white;">Location:</span> <span style="color: #FFD700;">Loading...</span></div>
+        <div><span style="color: white;">Altitude:</span> <span style="color: #FFD700;">${tiangongData.altitude} km</span></div>
+        <div><span style="color: white;">Orbital Speed:</span> <span style="color: #FFD700;">${speed.toLocaleString()} km/h</span></div>
+        <div><span style="color: white;">Orbit Period:</span> <span style="color: #FFD700;">${orbitTime} minutes</span></div>
+        <div><span style="color: white;">Configuration:</span> <span style="color: #FFD700;">T-shaped (Tianhe + 2 labs)</span></div>
+        <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+          Coordinates: ${tiangongData.lat.toFixed(4)}°, ${tiangongData.lng.toFixed(4)}°
+        </div>
+      `;
+      
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.clientX + 10) + 'px';
+      tooltip.style.top = (event.clientY - 10) + 'px';
+      
+      // Try to get location name and update tooltip
+      try {
+        const locationName = await getLocationName(tiangongData.lat, tiangongData.lng);
+        
+        // Only update if tooltip is still visible
+        if (tooltip.style.display === 'block') {
+          tooltip.innerHTML = `
+            <div style="color: #FFD700; font-weight: bold; margin-bottom: 8px;">🏗️ Tiangong Space Station</div>
+            <div><span style="color: white;">Over:</span> <span style="color: #FFD700;">${locationName}</span></div>
+            <div><span style="color: white;">Altitude:</span> <span style="color: #FFD700;">${tiangongData.altitude} km</span></div>
+            <div><span style="color: white;">Orbital Speed:</span> <span style="color: #FFD700;">${speed.toLocaleString()} km/h</span></div>
+            <div><span style="color: white;">Orbit Period:</span> <span style="color: #FFD700;">${orbitTime} minutes</span></div>
+            <div><span style="color: white;">Configuration:</span> <span style="color: #FFD700;">T-shaped (Tianhe + 2 labs)</span></div>
+            <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+              Coordinates: ${tiangongData.lat.toFixed(4)}°, ${tiangongData.lng.toFixed(4)}°
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.warn('Failed to update location in Tiangong tooltip:', error);
       }
     }
 
@@ -1280,6 +1477,220 @@
       }
     });
 
+    // Set up callback to add Tiangong to the globe
+    setAddTiangongToGlobe((tiangongData) => {
+      console.log('🏗️ Tiangong callback triggered with data:', tiangongData);
+      console.log('🏗️ Adding Tiangong to globe at lat:', tiangongData.lat, 'lng:', tiangongData.lng);
+      
+      // Create detailed Tiangong 3D model with Chinese space station design
+      const tiangongGroup = new THREE.Group();
+      
+      // Main Tiangong core module (Tianhe) - T-shaped configuration
+      const coreGeometry = new THREE.BoxGeometry(1.2, 0.6, 0.8);
+      const coreMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFD700, // Golden color for Chinese space station
+        transparent: true,
+        opacity: 0.95
+      });
+      const tiangongCore = new THREE.Mesh(coreGeometry, coreMaterial);
+      tiangongGroup.add(tiangongCore);
+      
+      // Wentian and Mengtian laboratory modules (T-shape configuration)
+      const labGeometry = new THREE.BoxGeometry(0.8, 0.5, 0.6);
+      const labMaterial = new THREE.MeshBasicMaterial({ color: 0xDAA520 }); // Darker gold
+      
+      // Wentian module (left side of T)
+      const wentianModule = new THREE.Mesh(labGeometry, labMaterial);
+      wentianModule.position.set(-1.0, 0, 0);
+      tiangongGroup.add(wentianModule);
+      
+      // Mengtian module (right side of T)
+      const mengtianModule = new THREE.Mesh(labGeometry, labMaterial);
+      mengtianModule.position.set(1.0, 0, 0);
+      tiangongGroup.add(mengtianModule);
+      
+      // Solar panel arrays (smaller than ISS but distinctive Chinese design)
+      const panelGeometry = new THREE.PlaneGeometry(2.5, 1.2);
+      const panelMaterial = new THREE.MeshBasicMaterial({
+        color: 0x2F2F4F, // Dark slate blue solar panels
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+      });
+      
+      // Solar panels on laboratory modules
+      const leftPanelTop = new THREE.Mesh(panelGeometry, panelMaterial);
+      leftPanelTop.position.set(-1.0, 1.0, 0);
+      leftPanelTop.rotation.x = Math.PI / 2;
+      tiangongGroup.add(leftPanelTop);
+      
+      const leftPanelBottom = new THREE.Mesh(panelGeometry, panelMaterial);
+      leftPanelBottom.position.set(-1.0, -1.0, 0);
+      leftPanelBottom.rotation.x = -Math.PI / 2;
+      tiangongGroup.add(leftPanelBottom);
+      
+      const rightPanelTop = new THREE.Mesh(panelGeometry, panelMaterial);
+      rightPanelTop.position.set(1.0, 1.0, 0);
+      rightPanelTop.rotation.x = Math.PI / 2;
+      tiangongGroup.add(rightPanelTop);
+      
+      const rightPanelBottom = new THREE.Mesh(panelGeometry, panelMaterial);
+      rightPanelBottom.position.set(1.0, -1.0, 0);
+      rightPanelBottom.rotation.x = -Math.PI / 2;
+      tiangongGroup.add(rightPanelBottom);
+      
+      // Communication arrays (Chinese design)
+      const antennaGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.25);
+      const antennaMaterial = new THREE.MeshBasicMaterial({ color: 0xB8860B }); // Dark golden rod
+      
+      for (let i = 0; i < 2; i++) {
+        const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+        antenna.position.set(0, 0.15, (i - 0.5) * 0.3);
+        antenna.rotation.x = (i - 0.5) * 0.3;
+        tiangongGroup.add(antenna);
+      }
+      
+      // Docking ports for Shenzhou spacecraft
+      const dockGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.12);
+      const dockMaterial = new THREE.MeshBasicMaterial({ color: 0x8B4513 }); // Saddle brown
+      
+      const forwardDock = new THREE.Mesh(dockGeometry, dockMaterial);
+      forwardDock.position.set(0, 0, 0.5);
+      forwardDock.rotation.x = Math.PI / 2;
+      tiangongGroup.add(forwardDock);
+      
+      const rearDock = new THREE.Mesh(dockGeometry, dockMaterial);
+      rearDock.position.set(0, 0, -0.5);
+      rearDock.rotation.x = -Math.PI / 2;
+      tiangongGroup.add(rearDock);
+      
+      // Tiangong position at proper orbital altitude
+      const tiangongAltitudeScaled = tiangongData.altitude / 6371; // Proper scaling (altitude / Earth radius)
+      const coords = world.getCoords(tiangongData.lat, tiangongData.lng, tiangongAltitudeScaled);
+      const { x, y, z } = coords;
+      
+      tiangongGroup.position.set(x, y, z);
+      
+      // Orient Tiangong to face forward in its orbit direction
+      const normal = new THREE.Vector3(x, y, z).normalize();
+      tiangongGroup.lookAt(0, 0, 0);
+      tiangongGroup.rotateY(Math.PI / 2);
+      
+      // Add Tiangong orbital trail visualization (different color from ISS)
+      const orbitRadius = 1 + tiangongAltitudeScaled;
+      const orbitGeometry = new THREE.RingGeometry(orbitRadius - 0.004, orbitRadius + 0.004, 128);
+      const orbitMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFD700, // Golden orbit trail
+        transparent: true,
+        opacity: 0.5,
+        side: THREE.DoubleSide
+      });
+      const orbitRing = new THREE.Mesh(orbitGeometry, orbitMaterial);
+      
+      // Add subtle glow effect around Tiangong (golden theme)
+      const glowGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0xFFD700,
+        transparent: true,
+        opacity: 0.25,
+        blending: THREE.AdditiveBlending
+      });
+      const tiangongGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+      tiangongGlow.position.copy(tiangongGroup.position);
+      
+      // Add to scene
+      world.scene().add(tiangongGroup);
+      world.scene().add(orbitRing);
+      world.scene().add(tiangongGlow);
+      
+      // Store Tiangong reference for hover detection and animation
+      tiangongObject = {
+        mesh: tiangongGroup,
+        glow: tiangongGlow,
+        orbit: orbitRing,
+        data: tiangongData,
+        originalLat: tiangongData.lat,
+        originalLng: tiangongData.lng,
+        altitude: tiangongAltitudeScaled,
+        isTracking: false,
+        orbitAngle: Math.PI // Start at different orbital position than ISS
+      };
+      
+      // Start Tiangong orbital animation
+      let lastUpdateTime = Date.now();
+      
+      const animateTiangong = () => {
+        const currentTime = Date.now();
+        const deltaTime = (currentTime - lastUpdateTime) / 1000; // Time in seconds
+        lastUpdateTime = currentTime;
+        
+        // Tiangong orbital period is approximately 90 minutes = 5400 seconds (slightly faster than ISS)
+        const orbitalPeriod = 5400; // seconds for full orbit
+        const angularVelocity = (2 * Math.PI) / orbitalPeriod; // radians per second
+        
+        // Update orbit angle
+        tiangongObject.orbitAngle += angularVelocity * deltaTime * 60; // Speed up 60x for visibility
+        
+        // Calculate new position along orbital path (different pattern from ISS)
+        const orbitRadius = 1 + tiangongObject.altitude;
+        
+        // Different orbital inclination than ISS
+        const newLat = tiangongObject.originalLat + (Math.sin(tiangongObject.orbitAngle) * 12); // ±12 degree variation (different from ISS)
+        const newLng = tiangongObject.originalLng + (tiangongObject.orbitAngle * 180 / Math.PI * 0.9) % 360; // Slightly different speed
+        
+        // Normalize longitude to -180 to 180 range
+        const normalizedLng = ((newLng + 180) % 360) - 180;
+        
+        // Update Tiangong position
+        const newCoords = world.getCoords(newLat, normalizedLng, tiangongObject.altitude);
+        tiangongObject.mesh.position.set(newCoords.x, newCoords.y, newCoords.z);
+        tiangongObject.glow.position.copy(tiangongObject.mesh.position);
+        
+        // Update stored coordinates
+        tiangongObject.data.lat = newLat;
+        tiangongObject.data.lng = normalizedLng;
+        
+        // Orient Tiangong along its orbital motion
+        const normal = new THREE.Vector3(newCoords.x, newCoords.y, newCoords.z).normalize();
+        tiangongObject.mesh.lookAt(0, 0, 0);
+        tiangongObject.mesh.rotateY(Math.PI / 2);
+        
+        // If in tracking mode, update camera to follow Tiangong
+        if (tiangongObject.isTracking) {
+          world.pointOfView({
+            lat: newLat,
+            lng: normalizedLng,
+            altitude: 0.8 // Maintain good viewing distance
+          }, 0); // Immediate update for smooth tracking
+        }
+        
+        // Animate solar panel rotation (different speed from ISS)
+        const panelRotation = (currentTime / 6000) % (Math.PI * 2); // Slightly slower rotation
+        const panels = tiangongObject.mesh.children.filter(child => 
+          child.geometry instanceof THREE.PlaneGeometry
+        );
+        
+        panels.forEach((panel, index) => {
+          // Alternate rotation direction for different panels
+          panel.rotation.z = panelRotation * (index % 2 === 0 ? 1 : -1);
+        });
+        
+        requestAnimationFrame(animateTiangong);
+      };
+      
+      // Start animation
+      animateTiangong();
+      
+      console.log('🏗️ Tiangong added with realistic orbital animation');
+      
+      // Show the toggle button now that Tiangong is loaded
+      const toggleButton = document.getElementById('tiangong-toggle-button');
+      if (toggleButton) {
+        toggleButton.style.display = 'block';
+        console.log('🏗️ Tiangong toggle button is now visible');
+      }
+    });
+
     // Set up callback to add astronaut panels to the page
     setAddAstronautPanelToPage((astronautData) => {
       console.log('👨‍🚀 Adding astronaut panels with data:', astronautData);
@@ -1326,6 +1737,12 @@
         
         // Show the container
         container.style.display = 'flex';
+        
+        // Show the live data disclaimer
+        const disclaimer = document.getElementById('live-data-disclaimer');
+        if (disclaimer) {
+          disclaimer.style.display = 'block';
+        }
         
         console.log('✅ Astronaut panels created and displayed');
       } else {
