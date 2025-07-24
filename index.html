@@ -2,7 +2,69 @@
 <html lang="en">
 
 <head>
-  <style> body { margin: 0; } </style>
+  <style> 
+    body { margin: 0; font-family: Arial, sans-serif; }
+    
+    /* ISS Zoom Button Styles */
+    #iss-zoom-button {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: linear-gradient(135deg, #00BFFF, #0080FF);
+      border: none;
+      border-radius: 12px;
+      padding: 12px 20px;
+      color: white;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 191, 255, 0.3);
+      transition: all 0.3s ease;
+      display: none; /* Hidden until ISS is loaded */
+    }
+    
+    #iss-zoom-button:hover {
+      background: linear-gradient(135deg, #0080FF, #0060FF);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
+    }
+    
+    #iss-zoom-button:active {
+      transform: translateY(0);
+      box-shadow: 0 3px 10px rgba(0, 191, 255, 0.3);
+    }
+    
+    #iss-zoom-button .iss-icon {
+      margin-right: 8px;
+      font-size: 16px;
+    }
+    
+    /* Reset zoom button */
+    #reset-zoom-button {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 1000;
+      background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+      border: none;
+      border-radius: 12px;
+      padding: 10px 16px;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+      transition: all 0.3s ease;
+      display: none;
+    }
+    
+    #reset-zoom-button:hover {
+      background: linear-gradient(135deg, #FF8E53, #FF6B6B);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+    }
+  </style>
 
   <script src="//cdn.jsdelivr.net/npm/globe.gl"></script>
   <!--<script src="../../dist/globe.gl.js"></script>-->
@@ -10,10 +72,21 @@
 
 <body>
   <div id="globeViz"></div>
+  
+  <!-- ISS Zoom Button -->
+  <button id="iss-zoom-button" onclick="zoomToISS()">
+    <span class="iss-icon">🛰️</span>
+    Zoom to ISS
+  </button>
+  
+  <!-- Reset Zoom Button -->
+  <button id="reset-zoom-button" onclick="resetZoom()">
+    🌍 Reset View
+  </button>
 
   <script type="module">
     import * as THREE from 'https://esm.sh/three';
-    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe } from './js/globe.js';
+    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe } from './js/globe.js';
 
     // Utility functions for hover display
     function formatScientificNotation(value) {
@@ -243,11 +316,82 @@
     world.controls().autoRotate = true;
     world.controls().autoRotateSpeed = 0.35;
 
+    // Global function to zoom to ISS position
+    window.zoomToISS = function() {
+      if (issObject && issObject.mesh) {
+        console.log('🛰️ Starting ISS zoom and tracking...');
+        console.log('🛰️ ISS object found:', issObject);
+        console.log('🛰️ ISS mesh position:', issObject.mesh.position);
+        console.log('🛰️ Original ISS coordinates:', issObject.originalLat, issObject.originalLng);
+        
+        // Enable ISS tracking mode
+        issObject.isTracking = true;
+        
+        // Stop auto-rotation while tracking ISS
+        world.controls().autoRotate = false;
+        
+        // Use the ORIGINAL ISS coordinates for initial zoom
+        console.log('🛰️ Zooming to ORIGINAL ISS coordinates:', issObject.originalLat, issObject.originalLng);
+        
+        // Zoom directly to original ISS coordinates
+        world.pointOfView({
+          lat: issObject.originalLat,
+          lng: issObject.originalLng,
+          altitude: 0.8 // Good distance to see the detailed ISS model
+        }, 2000); // 2 second transition
+        
+        // Show reset button
+        const resetButton = document.getElementById('reset-zoom-button');
+        if (resetButton) {
+          resetButton.style.display = 'block';
+        }
+        
+        console.log('✅ Zoomed to ISS coordinates and ENABLED tracking - camera will follow ISS station');
+      } else {
+        console.warn('⚠️ ISS not available for tracking');
+        console.log('Debug: issObject =', issObject);
+        alert('ISS not found! Check console for debugging info.');
+      }
+    };
+    
+    // Global function to reset zoom to default view
+    window.resetZoom = function() {
+      console.log('🌍 Stopping ISS tracking and resetting to default view...');
+      
+      // DISABLE ISS tracking mode
+      if (issObject) {
+        issObject.isTracking = false;
+        console.log('🛰️ ISS tracking mode DISABLED');
+      }
+      
+      // Reset to default global view
+      world.pointOfView({
+        lat: 0,
+        lng: 0,
+        altitude: 2.0 // Higher altitude = zoomed out view of whole Earth
+      }, 1500); // 1.5 second transition
+      
+      // Hide reset button
+      const resetButton = document.getElementById('reset-zoom-button');
+      if (resetButton) {
+        resetButton.style.display = 'none';
+      }
+      
+      // Reset auto-rotation speed
+      setTimeout(() => {
+        world.controls().autoRotate = true;
+        world.controls().autoRotateSpeed = 0.35; // Default rotation speed
+      }, 1800);
+      
+      console.log('✅ Reset to global view - camera no longer follows ISS station');
+    };
+
     // Raycaster for hover detection
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let fireballSpheres = []; // Store references to fireball spheres with their data
     let meteoriteSpheres = []; // Store references to meteorite spheres with their data
+    let issObject = null; // Store ISS object reference
 
     // Mouse move handler for hover
     function onMouseMove(event) {
@@ -261,6 +405,12 @@
       
       // Check for meteorite intersections
       const meteoriteIntersects = raycaster.intersectObjects(meteoriteSpheres.map(m => m.sphere));
+      
+      // Check for ISS intersection
+      let issIntersects = [];
+      if (issObject) {
+        issIntersects = raycaster.intersectObject(issObject.mesh);
+      }
 
       if (fireballIntersects.length > 0) {
         const intersectedFireball = fireballSpheres.find(f => f.sphere === fireballIntersects[0].object);
@@ -272,6 +422,8 @@
         if (intersectedMeteorite) {
           showMeteoriteTooltip(event, intersectedMeteorite.data);
         }
+      } else if (issIntersects.length > 0) {
+        showISSTooltip(event, issObject.data);
       } else {
         hideTooltip();
       }
@@ -365,6 +517,51 @@
         }
       } catch (error) {
         console.warn('Failed to update location in meteorite tooltip:', error);
+      }
+    }
+
+    // Show tooltip with ISS information
+    async function showISSTooltip(event, issData) {
+      //const currentTime = new Date().toLocaleString();
+      const speed = 27600; // ISS orbital speed in km/h
+      const orbitTime = 93; // ISS orbit time in minutes
+      
+      tooltip.innerHTML = `
+        <div style="color: #00BFFF; font-weight: bold; margin-bottom: 8px;">🛰️ International Space Station</div>
+        <div><span style="color: white;">Location:</span> <span style="color: #00BFFF;">Loading...</span></div>
+        <div><span style="color: white;">Altitude:</span> <span style="color: #00BFFF;">${issData.altitude} km</span></div>
+        <div><span style="color: white;">Orbital Speed:</span> <span style="color: #00BFFF;">${speed.toLocaleString()} km/h</span></div>
+        <div><span style="color: white;">Orbit Period:</span> <span style="color: #00BFFF;">${orbitTime} minutes</span></div>
+
+        <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+          Coordinates: ${issData.lat.toFixed(4)}°, ${issData.lng.toFixed(4)}°
+        </div>
+      `;
+      
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.clientX + 10) + 'px';
+      tooltip.style.top = (event.clientY - 10) + 'px';
+      
+      // Try to get location name and update tooltip
+      try {
+        const locationName = await getLocationName(issData.lat, issData.lng);
+        
+        // Only update if tooltip is still visible
+        if (tooltip.style.display === 'block') {
+          tooltip.innerHTML = `
+            <div style="color: #00BFFF; font-weight: bold; margin-bottom: 8px;">🛰️ International Space Station</div>
+            <div><span style="color: white;">Over:</span> <span style="color: #00BFFF;">${locationName}</span></div>
+            <div><span style="color: white;">Altitude:</span> <span style="color: #00BFFF;">${issData.altitude} km</span></div>
+            <div><span style="color: white;">Orbital Speed:</span> <span style="color: #00BFFF;">${speed.toLocaleString()} km/h</span></div>
+            <div><span style="color: white;">Orbit Period:</span> <span style="color: #00BFFF;">${orbitTime} minutes</span></div>
+
+            <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+              Coordinates: ${issData.lat.toFixed(4)}°, ${issData.lng.toFixed(4)}°
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.warn('Failed to update location in ISS tooltip:', error);
       }
     }
 
@@ -755,6 +952,209 @@
       });
       
       console.log('✅ Finished adding', displayMeteorites.length, 'meteorites with age-based colors (older = darker pink) and mass-based sizes (larger mass = bigger dots)');
+    });
+
+    // Set up callback to add ISS to the globe
+    setAddISSToGlobe((issData) => {
+      console.log('🛰️ ISS callback triggered with data:', issData);
+      console.log('🛰️ Adding ISS to globe at lat:', issData.lat, 'lng:', issData.lng);
+      
+      // Create detailed ISS 3D model with good visibility
+      const issGroup = new THREE.Group();
+      
+      // Main ISS body (central module) - nicely sized and visible
+      const bodyGeometry = new THREE.BoxGeometry(1.5, 0.8, 1.0);
+      const bodyMaterial = new THREE.MeshBasicMaterial({
+        color: 0xE0E0E0, // Light silver/white
+        transparent: true,
+        opacity: 0.95
+      });
+      const issBody = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      issGroup.add(issBody);
+      
+      // Secondary modules
+      const module1Geometry = new THREE.BoxGeometry(0.6, 0.4, 0.8);
+      const module1Material = new THREE.MeshBasicMaterial({ color: 0xC0C0C0 });
+      const module1 = new THREE.Mesh(module1Geometry, module1Material);
+      module1.position.set(0, 0, 1.2);
+      issGroup.add(module1);
+      
+      const module2 = new THREE.Mesh(module1Geometry, module1Material);
+      module2.position.set(0, 0, -1.2);
+      issGroup.add(module2);
+      
+      // Solar panel arrays
+      const panelGeometry = new THREE.PlaneGeometry(3.0, 1.5);
+      const panelMaterial = new THREE.MeshBasicMaterial({
+        color: 0x1a1a3a, // Dark blue solar panels
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide
+      });
+      
+      // Left solar panel array
+      const leftPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+      leftPanel.position.set(-2.2, 0, 0);
+      leftPanel.rotation.y = Math.PI / 2;
+      issGroup.add(leftPanel);
+      
+      // Right solar panel array
+      const rightPanel = new THREE.Mesh(panelGeometry, panelMaterial);
+      rightPanel.position.set(2.2, 0, 0);
+      rightPanel.rotation.y = -Math.PI / 2;
+      issGroup.add(rightPanel);
+      
+      // Add antenna/communication arrays
+      const antennaGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.3);
+      const antennaMaterial = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      
+      for (let i = 0; i < 3; i++) {
+        const antenna = new THREE.Mesh(antennaGeometry, antennaMaterial);
+        antenna.position.set((i - 1) * 0.2, 0.2, 0);
+        antenna.rotation.z = (i - 1) * 0.2;
+        issGroup.add(antenna);
+      }
+      
+      // Add docking ports
+      const dockGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.15);
+      const dockMaterial = new THREE.MeshBasicMaterial({ color: 0x555555 });
+      
+      const dock1 = new THREE.Mesh(dockGeometry, dockMaterial);
+      dock1.position.set(0, -0.2, 0.3);
+      dock1.rotation.x = Math.PI / 2;
+      issGroup.add(dock1);
+      
+      const dock2 = new THREE.Mesh(dockGeometry, dockMaterial);
+      dock2.position.set(0, 0.2, -0.3);
+      dock2.rotation.x = -Math.PI / 2;
+      issGroup.add(dock2);
+      
+      // ISS position at proper orbital altitude
+      const issAltitudeScaled = issData.altitude / 6371; // Proper scaling (altitude / Earth radius)
+      const coords = world.getCoords(issData.lat, issData.lng, issAltitudeScaled);
+      const { x, y, z } = coords;
+      
+      issGroup.position.set(x, y, z);
+      
+      // Orient ISS to face forward in its orbit direction
+      const normal = new THREE.Vector3(x, y, z).normalize();
+      issGroup.lookAt(0, 0, 0);
+      issGroup.rotateY(Math.PI / 2);
+      
+      // Add ISS orbital trail visualization
+      const orbitRadius = 1 + issAltitudeScaled;
+      const orbitGeometry = new THREE.RingGeometry(orbitRadius - 0.005, orbitRadius + 0.005, 128);
+      const orbitMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00AAFF,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide
+      });
+      const orbitRing = new THREE.Mesh(orbitGeometry, orbitMaterial);
+      
+      // Add subtle glow effect around ISS
+      const glowGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+      const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0x88DDFF,
+        transparent: true,
+        opacity: 0.3,
+        blending: THREE.AdditiveBlending
+      });
+      const issGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+      issGlow.position.copy(issGroup.position);
+      
+      // Add to scene
+      world.scene().add(issGroup);
+      world.scene().add(orbitRing);
+      world.scene().add(issGlow);
+      
+      // Store ISS reference for hover detection and animation
+      issObject = {
+        mesh: issGroup,
+        glow: issGlow,
+        orbit: orbitRing,
+        data: issData,
+        originalLat: issData.lat,
+        originalLng: issData.lng,
+        altitude: issAltitudeScaled,
+        isTracking: false,
+        orbitAngle: 0 // Add orbit animation angle
+      };
+      
+      // Start ISS orbital animation
+      let lastUpdateTime = Date.now();
+      
+      const animateISS = () => {
+        const currentTime = Date.now();
+        const deltaTime = (currentTime - lastUpdateTime) / 1000; // Time in seconds
+        lastUpdateTime = currentTime;
+        
+        // ISS orbital period is approximately 93 minutes = 5580 seconds
+        const orbitalPeriod = 5580; // seconds for full orbit
+        const angularVelocity = (2 * Math.PI) / orbitalPeriod; // radians per second
+        
+        // Update orbit angle
+        issObject.orbitAngle += angularVelocity * deltaTime * 60; // Speed up 60x for visibility
+        
+        // Calculate new position along orbital path
+        const orbitRadius = 1 + issObject.altitude;
+        
+        // Simple circular orbit (in reality ISS orbit is more complex)
+        const newLat = issObject.originalLat + (Math.sin(issObject.orbitAngle) * 15); // ±15 degree variation
+        const newLng = issObject.originalLng + (issObject.orbitAngle * 180 / Math.PI) % 360; // Longitude progression
+        
+        // Normalize longitude to -180 to 180 range
+        const normalizedLng = ((newLng + 180) % 360) - 180;
+        
+        // Update ISS position
+        const newCoords = world.getCoords(newLat, normalizedLng, issObject.altitude);
+        issObject.mesh.position.set(newCoords.x, newCoords.y, newCoords.z);
+        issObject.glow.position.copy(issObject.mesh.position);
+        
+        // Update stored coordinates for tracking
+        issObject.data.lat = newLat;
+        issObject.data.lng = normalizedLng;
+        
+        // Orient ISS along its orbital motion
+        const normal = new THREE.Vector3(newCoords.x, newCoords.y, newCoords.z).normalize();
+        issObject.mesh.lookAt(0, 0, 0);
+        issObject.mesh.rotateY(Math.PI / 2);
+        
+        // If in tracking mode, update camera to follow ISS
+        if (issObject.isTracking) {
+          world.pointOfView({
+            lat: newLat,
+            lng: normalizedLng,
+            altitude: 0.8 // Maintain good viewing distance
+          }, 0); // Immediate update for smooth tracking
+        }
+        
+        // Animate solar panel rotation (subtle effect)
+        const panelRotation = (currentTime / 5000) % (Math.PI * 2); // Slow rotation
+        const leftPanel = issObject.mesh.children.find(child => 
+          child.geometry instanceof THREE.PlaneGeometry && child.position.x < 0
+        );
+        const rightPanel = issObject.mesh.children.find(child => 
+          child.geometry instanceof THREE.PlaneGeometry && child.position.x > 0
+        );
+        
+        if (leftPanel) leftPanel.rotation.z = panelRotation;
+        if (rightPanel) rightPanel.rotation.z = -panelRotation;
+        
+        requestAnimationFrame(animateISS);
+      };
+      
+      // Start animation
+      animateISS();
+      
+      console.log('🛰️ ISS added with realistic orbital animation');
+      
+      // Show the zoom button now that ISS is loaded
+      const zoomButton = document.getElementById('iss-zoom-button');
+      if (zoomButton) {
+        zoomButton.style.display = 'block';
+        console.log('🛰️ ISS zoom button is now visible');
+      }
     });
 
     // Load and plot the data

@@ -157,16 +157,77 @@ async function loadMeteoriteAndFireballData() {
     } else {
         console.log('Meteorite markers ready:', meteoriteMarkers);
     }
+    
+    // Load ISS position data
+    await loadISSPosition();
+}
+
+// Function to fetch and update ISS position
+async function loadISSPosition() {
+    console.log('🛰️ Loading ISS position...');
+    
+    try {
+        // Fetch current ISS position from API
+        const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+        const data = await response.json();
+        
+        console.log('ISS API Response:', data);
+        
+        if (data.latitude && data.longitude) {
+            const issData = {
+                lat: parseFloat(data.latitude),
+                lng: parseFloat(data.longitude),
+                altitude: 408, // ISS altitude in km
+                timestamp: Date.now() / 1000
+            };
+            
+            console.log('ISS Position from API:', issData);
+            
+            // Call ISS callback if set
+            if (typeof addISSToGlobe === 'function') {
+                addISSToGlobe(issData);
+            } else {
+                console.log('ISS data ready but no callback set:', issData);
+            }
+            return;
+        }
+    } catch (error) {
+        console.warn('Failed to fetch ISS position from API:', error);
+    }
+    
+    // Fallback: Create a default ISS position for demonstration
+    console.log('Using fallback ISS position...');
+    const fallbackISS = {
+        lat: 25.7617,  // Over Florida
+        lng: -80.1918,
+        altitude: 408,
+        timestamp: Date.now() / 1000
+    };
+    
+    console.log('Fallback ISS Position:', fallbackISS);
+    
+    if (typeof addISSToGlobe === 'function') {
+        addISSToGlobe(fallbackISS);
+        console.log('✅ ISS fallback data sent to globe');
+    } else {
+        console.log('❌ ISS data ready but no callback function set');
+    }
 }
 
 
 // This function will be set by index.html after world is created
 let addFireballMarkersToGlobe = null;
 let addMeteoriteMarkersToGlobe = null;
+let addISSToGlobe = null;
+
 function setAddFireballMarkersToGlobe(fn) {
   addFireballMarkersToGlobe = fn;
 }
 function setAddMeteoriteMarkersToGlobe(fn) {
   addMeteoriteMarkersToGlobe = fn;
 }
-export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe };
+function setAddISSToGlobe(fn) {
+  addISSToGlobe = fn;
+}
+
+export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe };
