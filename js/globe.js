@@ -37,8 +37,9 @@ async function loadMeteoriteAndFireballData() {
             lat: parseFloat(m.reclat),
             lng: parseFloat(m.reclong),
             name: m.name || '',
-            mass: m.mass || '',
-            year: m.year || ''
+            mass: m['mass (g)'] || '',
+            year: m.year || '',
+            recclass: m.recclass || ''
         }));
 
     // Helper to parse coordinates with E/W/N/S and handle undefined/null

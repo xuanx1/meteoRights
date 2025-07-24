@@ -13,7 +13,7 @@
 
   <script type="module">
     import * as THREE from 'https://esm.sh/three';
-    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe } from './js/globe.js';
+    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe } from './js/globe.js';
 
     // Utility functions for hover display
     function formatScientificNotation(value) {
@@ -247,6 +247,7 @@
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let fireballSpheres = []; // Store references to fireball spheres with their data
+    let meteoriteSpheres = []; // Store references to meteorite spheres with their data
 
     // Mouse move handler for hover
     function onMouseMove(event) {
@@ -254,12 +255,22 @@
       mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
       raycaster.setFromCamera(mouse, world.camera());
-      const intersects = raycaster.intersectObjects(fireballSpheres.map(f => f.sphere));
+      
+      // Check for fireball intersections
+      const fireballIntersects = raycaster.intersectObjects(fireballSpheres.map(f => f.sphere));
+      
+      // Check for meteorite intersections
+      const meteoriteIntersects = raycaster.intersectObjects(meteoriteSpheres.map(m => m.sphere));
 
-      if (intersects.length > 0) {
-        const intersectedFireball = fireballSpheres.find(f => f.sphere === intersects[0].object);
+      if (fireballIntersects.length > 0) {
+        const intersectedFireball = fireballSpheres.find(f => f.sphere === fireballIntersects[0].object);
         if (intersectedFireball) {
           showFireballTooltip(event, intersectedFireball.data);
+        }
+      } else if (meteoriteIntersects.length > 0) {
+        const intersectedMeteorite = meteoriteSpheres.find(m => m.sphere === meteoriteIntersects[0].object);
+        if (intersectedMeteorite) {
+          showMeteoriteTooltip(event, intersectedMeteorite.data);
         }
       } else {
         hideTooltip();
@@ -305,6 +316,55 @@
         }
       } catch (error) {
         console.warn('Failed to update location in tooltip:', error);
+      }
+    }
+
+    // Show tooltip with meteorite information
+    async function showMeteoriteTooltip(event, meteoriteData) {
+      // Show tooltip immediately with meteorite info
+      const mass = parseFloat(meteoriteData.mass) || 0;
+      const massDisplay = mass > 0 ? `${mass.toLocaleString()} g` : 'Unknown';
+      const year = parseInt(meteoriteData.year) || null;
+      const ageDisplay = year ? `${2025 - year} years old` : 'Unknown age';
+      
+      tooltip.innerHTML = `
+        <div style="color: #FF00FF; font-weight: bold; margin-bottom: 8px;">☄️ Meteorite Landing</div>
+        <div><span style="color: white;">Name:</span> <span style="color: #FF00FF;">${meteoriteData.name || 'Unknown'}</span></div>
+        <div><span style="color: white;">Location:</span> <span style="color: #FF00FF;">Loading...</span></div>
+        <div><span style="color: white;">Mass:</span> <span style="color: #FF00FF;">${massDisplay}</span></div>
+        <div><span style="color: white;">Year Found:</span> <span style="color: #FF00FF;">${meteoriteData.year || 'Unknown'}</span></div>
+        <div><span style="color: white;">Age:</span> <span style="color: #FF00FF;">${ageDisplay}</span></div>
+        <div><span style="color: white;">Classification:</span> <span style="color: #FF00FF;">${meteoriteData.recclass || 'Unknown'}</span></div>
+        <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+          Coordinates: ${meteoriteData.lat.toFixed(4)}°, ${meteoriteData.lng.toFixed(4)}°
+        </div>
+      `;
+      
+      tooltip.style.display = 'block';
+      tooltip.style.left = (event.clientX + 10) + 'px';
+      tooltip.style.top = (event.clientY - 10) + 'px';
+      
+      // Try to get location name and update tooltip
+      try {
+        const locationName = await getLocationName(meteoriteData.lat, meteoriteData.lng);
+        
+        // Only update if tooltip is still visible
+        if (tooltip.style.display === 'block') {
+          tooltip.innerHTML = `
+            <div style="color: #FF00FF; font-weight: bold; margin-bottom: 8px;">☄️ Meteorite Landing</div>
+            <div><span style="color: white;">Name:</span> <span style="color: #FF00FF;">${meteoriteData.name || 'Unknown'}</span></div>
+            <div><span style="color: white;">Location:</span> <span style="color: #FF00FF;">${locationName}</span></div>
+            <div><span style="color: white;">Mass:</span> <span style="color: #FF00FF;">${massDisplay}</span></div>
+            <div><span style="color: white;">Year Found:</span> <span style="color: #FF00FF;">${meteoriteData.year || 'Unknown'}</span></div>
+            <div><span style="color: white;">Age:</span> <span style="color: #FF00FF;">${ageDisplay}</span></div>
+            <div><span style="color: white;">Classification:</span> <span style="color: #FF00FF;">${meteoriteData.recclass || 'Unknown'}</span></div>
+            <div style="margin-top: 6px; font-size: 11px; color: #ccc;">
+              Coordinates: ${meteoriteData.lat.toFixed(4)}°, ${meteoriteData.lng.toFixed(4)}°
+            </div>
+          `;
+        }
+      } catch (error) {
+        console.warn('Failed to update location in meteorite tooltip:', error);
       }
     }
 
@@ -607,6 +667,94 @@
           animate();
         });
       }, 1000);
+    });
+
+    // Set up callback to add meteorite markers to the globe (adapted from carpark display logic)
+    setAddMeteoriteMarkersToGlobe((meteoriteMarkers) => {
+      console.log('🅿️ Loading meteorites on globe...', meteoriteMarkers.length, 'meteorites found');
+      
+      if (!meteoriteMarkers || meteoriteMarkers.length === 0) {
+        console.log('⚠️ No meteorite data available');
+        return;
+      }
+      
+      // Filter meteorites that have valid coordinates (like filtering carparks with location)
+      const meteoritesWithLocation = meteoriteMarkers.filter(meteorite => 
+        meteorite.lat && meteorite.lng && 
+        !isNaN(meteorite.lat) && !isNaN(meteorite.lng)
+      );
+      
+      if (meteoritesWithLocation.length === 0) {
+        console.log('⚠️ No meteorite coordinates found');
+        return;
+      }
+      
+      // Show every 3rd meteorite to avoid overcrowding (like carpark filtering)
+      const displayMeteorites = meteoritesWithLocation.filter((meteorite, index) => index % 3 === 0);
+      console.log('Displaying', displayMeteorites.length, 'out of', meteoritesWithLocation.length, 'meteorites');
+      
+      // Create meteorite markers with age-based color and mass-based size
+      displayMeteorites.forEach((meteorite, index) => {
+        const mass = parseFloat(meteorite.mass) || 0;
+        const year = parseInt(meteorite.year) || 2000; // Default to 2000 if no year
+        
+        // Calculate age-based color (older = darker pink)
+        const currentYear = 2025;
+        const age = currentYear - year;
+        const maxAge = 200; // Assume meteorites range from recent to ~200 years old
+        const normalizedAge = Math.min(age / maxAge, 1); // 0 (new) to 1 (old)
+        
+        // Pink color gradient: bright pink (new) to dark magenta (old)
+        const brightness = 1 - (normalizedAge * 0.7); // 1.0 to 0.3 brightness
+        const baseColor = { r: 255, g: 0, b: 255 }; // Bright magenta base
+        const darkColor = {
+          r: Math.floor(baseColor.r * brightness),
+          g: Math.floor(baseColor.g * brightness), 
+          b: Math.floor(baseColor.b * brightness)
+        };
+        const dotColor = `rgb(${darkColor.r}, ${darkColor.g}, ${darkColor.b})`;
+        
+        // Calculate mass-based size (greater mass = bigger size)
+        let dotSize = 0.2; // Base size
+        if (mass > 0) {
+          const logMass = Math.log10(mass + 1); // Log scale for mass
+          const maxLogMass = 6; // Assume max ~1,000,000g (1 ton)
+          const normalizedMass = Math.min(logMass / maxLogMass, 1);
+          dotSize = 0.2 + (normalizedMass * 0.4); // Size from 0.2 to 0.6
+        }
+        
+        // Create dot geometry with mass-based size
+        const dotGeometry = new THREE.SphereGeometry(dotSize, 8, 8);
+        const dotMaterial = new THREE.MeshBasicMaterial({
+          color: dotColor,
+          transparent: true,
+          opacity: 0.9
+        });
+        
+        const meteoriteSpot = new THREE.Mesh(dotGeometry, dotMaterial);
+        
+        // Position on globe surface (like positioning carpark markers)
+        const coords = world.getCoords(meteorite.lat, meteorite.lng, 0.001);
+        const { x, y, z } = coords;
+        meteoriteSpot.position.set(x, y, z);
+        
+        // Add to scene
+        world.scene().add(meteoriteSpot);
+        
+        // Store meteorite reference for hover detection
+        meteoriteSpheres.push({
+          sphere: meteoriteSpot,
+          data: meteorite
+        });
+        
+        // Debug log every 50th meteorite with age and size info
+        if (index % 50 === 0) {
+          console.log(`Meteorite ${index}: ${meteorite.name || 'Unknown'} at lat=${meteorite.lat}, lng=${meteorite.lng}`);
+          console.log(`  Mass: ${mass}g, Year: ${year}, Age: ${age} years, Size: ${dotSize.toFixed(3)}, Color: ${dotColor}`);
+        }
+      });
+      
+      console.log('✅ Finished adding', displayMeteorites.length, 'meteorites with age-based colors (older = darker pink) and mass-based sizes (larger mass = bigger dots)');
     });
 
     // Load and plot the data
