@@ -5,8 +5,8 @@
   <style> 
     body { margin: 0; font-family: Arial, sans-serif; }
     
-    /* ISS Zoom Button Styles */
-    #iss-zoom-button {
+    /* ISS Toggle Button Styles */
+    #iss-toggle-button {
       position: fixed;
       top: 20px;
       right: 20px;
@@ -24,45 +24,36 @@
       display: none; /* Hidden until ISS is loaded */
     }
     
-    #iss-zoom-button:hover {
+    #iss-toggle-button:hover {
       background: linear-gradient(135deg, #0080FF, #0060FF);
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 191, 255, 0.4);
     }
     
-    #iss-zoom-button:active {
+    #iss-toggle-button:active {
       transform: translateY(0);
       box-shadow: 0 3px 10px rgba(0, 191, 255, 0.3);
     }
     
-    #iss-zoom-button .iss-icon {
+    #iss-toggle-button .iss-icon {
       margin-right: 8px;
       font-size: 16px;
     }
     
-    /* Reset zoom button */
-    #reset-zoom-button {
+    /* Legend styles - adapted from Leaflet control */
+    .info.legend {
       position: fixed;
-      top: 80px;
+      bottom: 20px;
       right: 20px;
       z-index: 1000;
-      background: linear-gradient(135deg, #FF6B6B, #FF8E53);
-      border: none;
-      border-radius: 12px;
-      padding: 10px 16px;
-      color: white;
-      font-weight: bold;
+      background: rgba(255, 255, 255, 0);
+
+      padding: 25px 30px;
+      font-family: 'Open Sans', Arial, sans-serif;
       font-size: 12px;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
-      transition: all 0.3s ease;
-      display: none;
-    }
-    
-    #reset-zoom-button:hover {
-      background: linear-gradient(135deg, #FF8E53, #FF6B6B);
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(255, 107, 107, 0.4);
+      min-width: 280px;
+      min-height: 180px;
+      overflow: visible;
     }
   </style>
 
@@ -73,16 +64,13 @@
 <body>
   <div id="globeViz"></div>
   
-  <!-- ISS Zoom Button -->
-  <button id="iss-zoom-button" onclick="zoomToISS()">
-    <span class="iss-icon">🛰️</span>
-    Zoom to ISS
+  <!-- ISS Toggle Button -->
+  <button id="iss-toggle-button" onclick="toggleISSView()">
+    <span class="iss-icon">🛰️ Zoom to ISS</span>
   </button>
-  
-  <!-- Reset Zoom Button -->
-  <button id="reset-zoom-button" onclick="resetZoom()">
-    🌍 Reset View
-  </button>
+
+  <!-- Legend adapted from Leaflet control -->
+  <div class="info legend" id="magnitude-legend"></div>
 
   <script type="module">
     import * as THREE from 'https://esm.sh/three';
@@ -308,6 +296,34 @@
 
     const tooltip = createTooltip();
 
+    // Add title
+    const titleContainer = document.createElement("div");
+    titleContainer.style.position = "absolute";
+    titleContainer.style.top = "20px";
+    titleContainer.style.left = "20px";
+    titleContainer.style.zIndex = "1000";
+    titleContainer.style.color = "white";
+    titleContainer.style.fontFamily = '"Inter", sans-serif';
+    titleContainer.style.pointerEvents = "none";
+
+    const mainTitle = document.createElement("h1");
+    mainTitle.innerHTML = "All Fireballs <br> and Meteorites<br> Ever Recorded,<br> Mapped";
+    mainTitle.style.margin = "-5px 0 0 0";
+    mainTitle.style.fontSize = "56px";
+    mainTitle.style.lineHeight = "1.2";
+    mainTitle.style.color = "white";
+
+    const subTitle = document.createElement("p");
+    subTitle.textContent = "and the ISS too.";
+    subTitle.style.margin = "5px 0 0 0";
+    subTitle.style.fontSize = "18.5px";
+    subTitle.style.color = "#fed86b";
+    subTitle.style.opacity = "0.9";
+
+    titleContainer.appendChild(mainTitle);
+    titleContainer.appendChild(subTitle);
+    document.body.appendChild(titleContainer);
+
     const world = new Globe(document.getElementById('globeViz'), { animateIn: false })
       .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
       .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png');
@@ -316,74 +332,90 @@
     world.controls().autoRotate = true;
     world.controls().autoRotateSpeed = 0.35;
 
-    // Global function to zoom to ISS position
-    window.zoomToISS = function() {
-      if (issObject && issObject.mesh) {
-        console.log('🛰️ Starting ISS zoom and tracking...');
-        console.log('🛰️ ISS object found:', issObject);
-        console.log('🛰️ ISS mesh position:', issObject.mesh.position);
-        console.log('🛰️ Original ISS coordinates:', issObject.originalLat, issObject.originalLng);
+    // Global variable to track ISS view state
+    let isISSView = false;
+
+    // Global function to toggle between ISS view and Earth view
+    window.toggleISSView = function() {
+      const toggleButton = document.getElementById('iss-toggle-button');
+      
+      if (!isISSView) {
+        // Zoom to ISS
+        if (issObject && issObject.mesh) {
+          console.log('🛰️ Starting ISS zoom and tracking...');
+          console.log('🛰️ ISS object found:', issObject);
+          console.log('🛰️ ISS mesh position:', issObject.mesh.position);
+          console.log('🛰️ Original ISS coordinates:', issObject.originalLat, issObject.originalLng);
+          
+          // Enable ISS tracking mode
+          issObject.isTracking = true;
+          
+          // Stop auto-rotation while tracking ISS
+          world.controls().autoRotate = false;
+          
+          // Use the ORIGINAL ISS coordinates for initial zoom
+          console.log('🛰️ Zooming to ORIGINAL ISS coordinates:', issObject.originalLat, issObject.originalLng);
+          
+          // Zoom directly to original ISS coordinates
+          world.pointOfView({
+            lat: issObject.originalLat,
+            lng: issObject.originalLng,
+            altitude: 0.8 // Good distance to see the detailed ISS model
+          }, 2000); // 2 second transition
+          
+          // Update button text and state
+          isISSView = true;
+          toggleButton.innerHTML = '<span class="iss-icon">🌍</span>Zoom Out to Earth';
+          
+          // Fade out titles when zooming to ISS
+          const titleContainer = document.querySelector("div[style*='position: absolute'][style*='top: 20px'][style*='left: 20px']");
+          if (titleContainer) {
+            titleContainer.style.transition = 'opacity 1.5s ease';
+            titleContainer.style.opacity = '0';
+          }
+          
+          console.log('✅ Zoomed to ISS coordinates and ENABLED tracking - camera will follow ISS station');
+        } else {
+          console.warn('⚠️ ISS not available for tracking');
+          console.log('Debug: issObject =', issObject);
+          alert('ISS not found! Check console for debugging info.');
+        }
+      } else {
+        // Zoom out to Earth
+        console.log('🌍 Stopping ISS tracking and resetting to default view...');
         
-        // Enable ISS tracking mode
-        issObject.isTracking = true;
-        
-        // Stop auto-rotation while tracking ISS
-        world.controls().autoRotate = false;
-        
-        // Use the ORIGINAL ISS coordinates for initial zoom
-        console.log('🛰️ Zooming to ORIGINAL ISS coordinates:', issObject.originalLat, issObject.originalLng);
-        
-        // Zoom directly to original ISS coordinates
-        world.pointOfView({
-          lat: issObject.originalLat,
-          lng: issObject.originalLng,
-          altitude: 0.8 // Good distance to see the detailed ISS model
-        }, 2000); // 2 second transition
-        
-        // Show reset button
-        const resetButton = document.getElementById('reset-zoom-button');
-        if (resetButton) {
-          resetButton.style.display = 'block';
+        // DISABLE ISS tracking mode
+        if (issObject) {
+          issObject.isTracking = false;
+          console.log('🛰️ ISS tracking mode DISABLED');
         }
         
-        console.log('✅ Zoomed to ISS coordinates and ENABLED tracking - camera will follow ISS station');
-      } else {
-        console.warn('⚠️ ISS not available for tracking');
-        console.log('Debug: issObject =', issObject);
-        alert('ISS not found! Check console for debugging info.');
+        // Reset to default global view
+        world.pointOfView({
+          lat: 0,
+          lng: 0,
+          altitude: 2.0 // Higher altitude = zoomed out view of whole Earth
+        }, 1500); // 1.5 second transition
+        
+        // Update button text and state
+        isISSView = false;
+        toggleButton.innerHTML = '<span class="iss-icon">🛰️</span>Zoom to ISS';
+        
+        // Fade in titles when zooming out to Earth
+        const titleContainer = document.querySelector("div[style*='position: absolute'][style*='top: 20px'][style*='left: 20px']");
+        if (titleContainer) {
+          titleContainer.style.transition = 'opacity 1.5s ease';
+          titleContainer.style.opacity = '1';
+        }
+        
+        // Reset auto-rotation speed
+        setTimeout(() => {
+          world.controls().autoRotate = true;
+          world.controls().autoRotateSpeed = 0.35; // Default rotation speed
+        }, 1800);
+        
+        console.log('✅ Reset to global view - camera no longer follows ISS station');
       }
-    };
-    
-    // Global function to reset zoom to default view
-    window.resetZoom = function() {
-      console.log('🌍 Stopping ISS tracking and resetting to default view...');
-      
-      // DISABLE ISS tracking mode
-      if (issObject) {
-        issObject.isTracking = false;
-        console.log('🛰️ ISS tracking mode DISABLED');
-      }
-      
-      // Reset to default global view
-      world.pointOfView({
-        lat: 0,
-        lng: 0,
-        altitude: 2.0 // Higher altitude = zoomed out view of whole Earth
-      }, 1500); // 1.5 second transition
-      
-      // Hide reset button
-      const resetButton = document.getElementById('reset-zoom-button');
-      if (resetButton) {
-        resetButton.style.display = 'none';
-      }
-      
-      // Reset auto-rotation speed
-      setTimeout(() => {
-        world.controls().autoRotate = true;
-        world.controls().autoRotateSpeed = 0.35; // Default rotation speed
-      }, 1800);
-      
-      console.log('✅ Reset to global view - camera no longer follows ISS station');
     };
 
     // Raycaster for hover detection
@@ -1149,16 +1181,54 @@
       
       console.log('🛰️ ISS added with realistic orbital animation');
       
-      // Show the zoom button now that ISS is loaded
-      const zoomButton = document.getElementById('iss-zoom-button');
-      if (zoomButton) {
-        zoomButton.style.display = 'block';
-        console.log('🛰️ ISS zoom button is now visible');
+      // Show the toggle button now that ISS is loaded
+      const toggleButton = document.getElementById('iss-toggle-button');
+      if (toggleButton) {
+        toggleButton.style.display = 'block';
+        console.log('🛰️ ISS toggle button is now visible');
       }
     });
 
     // Load and plot the data
     loadMeteoriteAndFireballData();
+
+    // Create legend - size of circle = magnitude (adapted from Leaflet control)
+    function createLegend() {
+      const legendDiv = document.getElementById('magnitude-legend');
+      
+      const magnitudes = [10];
+      const labels = [];
+
+      magnitudes.forEach((mag) => {
+        const size = Math.pow(mag, 1.8);
+        labels.push(
+          `<div style="position: absolute; top: 70px; left: 54%; transform: translateX(-50%);">
+          <svg width="${size * 3}" height="${size * 3}" viewBox="0 0 ${size * 2.5} ${size * 2.5}" style="position: absolute;">
+          <defs>
+          <path id="textPath${mag}" d="M ${size * 1.25}, ${size * 1.25} m -${size}, 0 a ${size},${size} 0 1,1 ${size * 2},0 a ${size},${size} 0 1,1 -${size * 2},0" />
+          </defs>
+          <text>
+          <textPath href="#textPath${mag}" startOffset="7%" text-anchor="start" style="font-size: 9px; fill: #ffffff; font-family: 'Open Sans', sans-serif; font-weight: bold;">
+          Total Radiated Energy, Joules
+          </textPath>
+          </text>
+          </svg>
+          </div>
+          <div style="position: absolute; bottom: 0; right: 0; width: ${size * 2}px; height: ${size * 2}px;">
+          <i style="background: rgba(255, 235, 59, 0.2); border: 2px solid #ffeb3b; width: ${size * 2}px; height: ${size * 2}px; border-radius: 50%; display: inline-block; position: absolute; top: 0; left: 0;">
+          </i>
+          <i style="background: rgba(255, 235, 59, 0.4); border: 2px solid #ffeb3b; width: ${size * 1.5}px; height: ${size * 1.5}px; border-radius: 50%; display: inline-block; position: absolute; top: 25%; left: 25%;"></i>
+          <i style="background: rgba(255, 235, 59, 0.5); border: 2px solid #ffeb3b; width: ${size}px; height: ${size}px; border-radius: 50%; display: inline-block; position: absolute; top: 50%; left: 50%;"></i>
+          </div>
+          <div style="position: absolute; bottom: 0px; right: 120px;"><span style="color: white;">Q<sub>e</sub></span></div>`
+        );
+      });
+
+      legendDiv.innerHTML = labels.join("<br>");
+    }
+
+    // Initialize legend
+    createLegend();
 
     // Add clouds sphere
     const CLOUDS_IMG_URL = './data/clouds.png';
