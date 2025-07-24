@@ -2,6 +2,7 @@
 ## and the ISS too.
 
 [Preview](https://xuanx1.github.io/meteoRights/)
+![Screenshot 2025-07-24 175018](https://github.com/user-attachments/assets/3d3d9654-6acb-473d-a6e9-65df5664233c)
 
 ## Data Sources & APIs
 
