@@ -2,7 +2,8 @@
 ## and the ISS and Tiangong too.
 
 [Preview](https://xuanx1.github.io/meteoRights/)
-![Screenshot 2025-07-24 175018](https://github.com/user-attachments/assets/3d3d9654-6acb-473d-a6e9-65df5664233c)
+![Screenshot 2025-07-24 184919](https://github.com/user-attachments/assets/b420a6d7-b284-4299-9469-cb2db99c724c)
+
 
 ## Data Sources & APIs
 
