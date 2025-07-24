@@ -160,6 +160,9 @@ async function loadMeteoriteAndFireballData() {
     
     // Load ISS position data
     await loadISSPosition();
+    
+    // Load astronaut data
+    await loadAstronautData();
 }
 
 // Function to fetch and update ISS position
@@ -214,11 +217,74 @@ async function loadISSPosition() {
     }
 }
 
+// Function to fetch astronaut data
+async function loadAstronautData() {
+    console.log('👨‍🚀 Loading astronaut data...');
+    
+    try {
+        const response = await fetch('http://api.open-notify.org/astros.json');
+        const data = await response.json();
+        
+        console.log('👨‍🚀 Astronaut API Response:', data);
+        
+        if (data.people && data.number) {
+            // Group astronauts by spacecraft
+            const craftGroups = {};
+            data.people.forEach(person => {
+                if (!craftGroups[person.craft]) {
+                    craftGroups[person.craft] = [];
+                }
+                craftGroups[person.craft].push(person);
+            });
+            
+            const astronautData = {
+                number: data.number,
+                craftGroups: craftGroups
+            };
+            
+            console.log(`👨‍🚀 ${data.number} people currently in space, grouped by craft:`, craftGroups);
+            
+            // Call astronaut callback if set
+            if (typeof addAstronautPanelToPage === 'function') {
+                addAstronautPanelToPage(astronautData);
+            } else {
+                console.log('👨‍🚀 Astronaut data ready but no callback set:', astronautData);
+            }
+        }
+    } catch (error) {
+        console.warn('👨‍🚀 Failed to fetch astronaut data from API:', error);
+        
+        // Fallback data with multiple spacecraft
+        const fallbackData = {
+            number: 7,
+            craftGroups: {
+                "ISS": [
+                    { name: "Expedition 72 Commander", craft: "ISS" },
+                    { name: "Flight Engineer 1", craft: "ISS" },
+                    { name: "Flight Engineer 2", craft: "ISS" },
+                    { name: "Flight Engineer 3", craft: "ISS" }
+                ],
+                "Tiangong": [
+                    { name: "Taikonaut 1", craft: "Tiangong" },
+                    { name: "Taikonaut 2", craft: "Tiangong" },
+                    { name: "Taikonaut 3", craft: "Tiangong" }
+                ]
+            }
+        };
+        
+        console.log('👨‍🚀 Using fallback astronaut data');
+        if (typeof addAstronautPanelToPage === 'function') {
+            addAstronautPanelToPage(fallbackData);
+        }
+    }
+}
+
 
 // This function will be set by index.html after world is created
 let addFireballMarkersToGlobe = null;
 let addMeteoriteMarkersToGlobe = null;
 let addISSToGlobe = null;
+let addAstronautPanelToPage = null;
 
 function setAddFireballMarkersToGlobe(fn) {
   addFireballMarkersToGlobe = fn;
@@ -229,5 +295,8 @@ function setAddMeteoriteMarkersToGlobe(fn) {
 function setAddISSToGlobe(fn) {
   addISSToGlobe = fn;
 }
+function setAddAstronautPanelToPage(fn) {
+  addAstronautPanelToPage = fn;
+}
 
-export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe };
+export { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddAstronautPanelToPage };

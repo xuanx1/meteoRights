@@ -55,6 +55,92 @@
       min-height: 180px;
       overflow: visible;
     }
+    
+    /* Astronaut Panel Styles */
+    .astronaut-panels-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      gap: 15px;
+      align-items: flex-end;
+      justify-content: flex-start;
+    }
+    
+    .astronaut-panel {
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid #ffffff;
+      border-radius: 8px;
+      padding: 15px 20px;
+      font-family: 'Open Sans', Arial, sans-serif;
+      color: white;
+      width: 200px;
+      min-width: 200px;
+      max-width: 200px;
+      box-shadow: 0 4px 12px rgba(255, 235, 59, 0.3);
+      flex-shrink: 0;
+    }
+    
+    .astronaut-panel h3 {
+      margin: 0 0 10px 0;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .craft-icon {
+      font-size: 18px;
+    }
+    
+    .astronaut-count {
+      font-size: 12px;
+      margin-bottom: 12px;
+      color: #00BFFF;
+    }
+    
+    .astronaut-list {
+      max-height: 150px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    }
+    
+    .astronaut-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .astronaut-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .astronaut-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 3px;
+    }
+    
+    .astronaut-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+    
+    .astronaut-item {
+      margin-bottom: 6px;
+      padding: 6px 8px;
+      background: rgba(255, 235, 59, 0.1);
+      border-radius: 4px;
+      border-left: 3px solid #ffeb3b;
+    }
+    
+    .astronaut-name {
+      font-weight: bold;
+      color: white;
+      font-size: 12px;
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
@@ -72,9 +158,14 @@
   <!-- Legend adapted from Leaflet control -->
   <div class="info legend" id="magnitude-legend"></div>
 
+  <!-- Astronaut Panels Container -->
+  <div class="astronaut-panels-container" id="astronaut-panels-container" style="display: none;">
+    <!-- Panels will be dynamically created here -->
+  </div>
+
   <script type="module">
     import * as THREE from 'https://esm.sh/three';
-    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe } from './js/globe.js';
+    import { loadMeteoriteAndFireballData, setAddFireballMarkersToGlobe, setAddMeteoriteMarkersToGlobe, setAddISSToGlobe, setAddAstronautPanelToPage } from './js/globe.js';
 
     // Utility functions for hover display
     function formatScientificNotation(value) {
@@ -1186,6 +1277,59 @@
       if (toggleButton) {
         toggleButton.style.display = 'block';
         console.log('🛰️ ISS toggle button is now visible');
+      }
+    });
+
+    // Set up callback to add astronaut panels to the page
+    setAddAstronautPanelToPage((astronautData) => {
+      console.log('👨‍🚀 Adding astronaut panels with data:', astronautData);
+      
+      const container = document.getElementById('astronaut-panels-container');
+      
+      if (container) {
+        // Clear existing panels
+        container.innerHTML = '';
+        
+        // Get craft icons
+        const getCraftIcon = (craft) => {
+          switch(craft.toUpperCase()) {
+            case 'ISS': return '🛰️';
+            case 'TIANGONG': return '🚀';
+            case 'SHENZHOU': return '🚀';
+            default: return '🌌';
+          }
+        };
+        
+        // Create a panel for each spacecraft
+        Object.entries(astronautData.craftGroups).forEach(([craft, astronauts]) => {
+          const panel = document.createElement('div');
+          panel.className = 'astronaut-panel';
+          
+          const craftIcon = getCraftIcon(craft);
+          const astronautCount = astronauts.length;
+          const peopleText = astronautCount === 1 ? 'person' : 'people';
+          
+          const astronautItems = astronauts.map(person => `
+            <div class="astronaut-item">
+              <div class="astronaut-name">${person.name}</div>
+            </div>
+          `).join('');
+          
+          panel.innerHTML = `
+            <h3><span class="craft-icon">${craftIcon}</span>${craft}</h3>
+            <div class="astronaut-count">${astronautCount} ${peopleText} aboard</div>
+            <div class="astronaut-list">${astronautItems}</div>
+          `;
+          
+          container.appendChild(panel);
+        });
+        
+        // Show the container
+        container.style.display = 'flex';
+        
+        console.log('✅ Astronaut panels created and displayed');
+      } else {
+        console.warn('⚠️ Astronaut panels container not found');
       }
     });
 
