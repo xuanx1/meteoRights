@@ -173,48 +173,71 @@ async function loadISSPosition() {
     console.log('🛰️ Loading ISS position...');
     
     try {
-        // Try simple JSONP approach first
+        // Try the most reliable CORS proxy for GitHub Pages
         let issData = null;
         
-        // First try: Use a simple proxy that works reliably with GitHub Pages
+        // First try: Use a CORS proxy that actually works with GitHub Pages
         try {
-            const proxyUrl = 'https://thingproxy.freeboard.io/fetch/';
-            const targetUrl = 'http://api.open-notify.org/iss-now.json';
-            const response1 = await fetch(proxyUrl + targetUrl);
-            const data1 = await response1.json();
-            console.log('ISS API Response (via thingproxy):', data1);
+            const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.open-notify.org/iss-now.json'));
+            const data = await response.json();
+            console.log('ISS API Response (via allorigins raw):', data);
             
-            if (data1.iss_position) {
+            if (data.iss_position) {
                 issData = {
-                    lat: parseFloat(data1.iss_position.latitude),
-                    lng: parseFloat(data1.iss_position.longitude),
+                    lat: parseFloat(data.iss_position.latitude),
+                    lng: parseFloat(data.iss_position.longitude),
                     altitude: 408, // ISS altitude in km
-                    timestamp: data1.timestamp || Date.now() / 1000
+                    timestamp: data.timestamp || Date.now() / 1000
                 };
-                console.log('✅ ISS position loaded from open-notify API via thingproxy');
+                console.log('✅ ISS position loaded from open-notify API via allorigins');
             }
         } catch (e) {
-            console.warn('thingproxy failed:', e);
+            console.warn('allorigins raw proxy failed:', e);
         }
         
-        // Second try: Use another reliable proxy
+        // Second try: Use jsonp.afeld.me proxy (GitHub Pages friendly)
         if (!issData) {
             try {
-                const response2 = await fetch('https://api.codetabs.com/v1/proxy?quest=http://api.open-notify.org/iss-now.json');
-                const data2 = await response2.json();
-                console.log('ISS API Response (via codetabs):', data2);
+                const response = await fetch('https://jsonp.afeld.me/?url=https://api.open-notify.org/iss-now.json');
+                const data = await response.json();
+                console.log('ISS API Response (via jsonp.afeld):', data);
                 
-                if (data2.iss_position) {
+                if (data.iss_position) {
                     issData = {
-                        lat: parseFloat(data2.iss_position.latitude),
-                        lng: parseFloat(data2.iss_position.longitude),
+                        lat: parseFloat(data.iss_position.latitude),
+                        lng: parseFloat(data.iss_position.longitude),
                         altitude: 408,
-                        timestamp: data2.timestamp || Date.now() / 1000
+                        timestamp: data.timestamp || Date.now() / 1000
                     };
-                    console.log('✅ ISS position loaded from open-notify API via codetabs');
+                    console.log('✅ ISS position loaded from open-notify API via jsonp.afeld');
                 }
             } catch (e) {
-                console.warn('codetabs proxy failed:', e);
+                console.warn('jsonp.afeld proxy failed:', e);
+            }
+        }
+        
+        // Third try: Use cors.sh proxy
+        if (!issData) {
+            try {
+                const response = await fetch('https://cors.sh/https://api.open-notify.org/iss-now.json', {
+                    headers: {
+                        'x-requested-with': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                console.log('ISS API Response (via cors.sh):', data);
+                
+                if (data.iss_position) {
+                    issData = {
+                        lat: parseFloat(data.iss_position.latitude),
+                        lng: parseFloat(data.iss_position.longitude),
+                        altitude: 408,
+                        timestamp: data.timestamp || Date.now() / 1000
+                    };
+                    console.log('✅ ISS position loaded from open-notify API via cors.sh');
+                }
+            } catch (e) {
+                console.warn('cors.sh proxy failed:', e);
             }
         }
         
@@ -256,10 +279,91 @@ async function loadISSPosition() {
 async function loadTiangongPosition() {
     console.log('🏗️ Loading Tiangong position...');
     
-    // For GitHub Pages reliability, let's use a simulated moving position
-    // This ensures the demo always works while still being educational
+    try {
+        // Try to fetch real Tiangong position from satellite tracking APIs
+        let tiangongData = null;
+        
+        // First try: Use wheretheiss.at with CORS proxy
+        try {
+            const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.wheretheiss.at/v1/satellites/48274'));
+            const data = await response.json();
+            console.log('Tiangong API Response (via allorigins):', data);
+            
+            if (data.latitude && data.longitude) {
+                tiangongData = {
+                    lat: parseFloat(data.latitude),
+                    lng: parseFloat(data.longitude),
+                    altitude: parseFloat(data.altitude) || 340,
+                    timestamp: Date.now() / 1000
+                };
+                console.log('✅ Tiangong Position from wheretheiss API:', tiangongData);
+            }
+        } catch (e) {
+            console.warn('allorigins proxy failed for Tiangong:', e);
+        }
+        
+        // Second try: Use jsonp.afeld.me proxy
+        if (!tiangongData) {
+            try {
+                const response = await fetch('https://jsonp.afeld.me/?url=https://api.wheretheiss.at/v1/satellites/48274');
+                const data = await response.json();
+                console.log('Tiangong API Response (via jsonp.afeld):', data);
+                
+                if (data.latitude && data.longitude) {
+                    tiangongData = {
+                        lat: parseFloat(data.latitude),
+                        lng: parseFloat(data.longitude),
+                        altitude: parseFloat(data.altitude) || 340,
+                        timestamp: Date.now() / 1000
+                    };
+                    console.log('✅ Tiangong Position from wheretheiss API via jsonp.afeld:', tiangongData);
+                }
+            } catch (e) {
+                console.warn('jsonp.afeld proxy failed for Tiangong:', e);
+            }
+        }
+        
+        // Third try: Use cors.sh proxy
+        if (!tiangongData) {
+            try {
+                const response = await fetch('https://cors.sh/https://api.wheretheiss.at/v1/satellites/48274', {
+                    headers: {
+                        'x-requested-with': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                console.log('Tiangong API Response (via cors.sh):', data);
+                
+                if (data.latitude && data.longitude) {
+                    tiangongData = {
+                        lat: parseFloat(data.latitude),
+                        lng: parseFloat(data.longitude),
+                        altitude: parseFloat(data.altitude) || 340,
+                        timestamp: Date.now() / 1000
+                    };
+                    console.log('✅ Tiangong Position from wheretheiss API via cors.sh:', tiangongData);
+                }
+            } catch (e) {
+                console.warn('cors.sh proxy failed for Tiangong:', e);
+            }
+        }
+        
+        if (tiangongData) {
+            if (typeof addTiangongToGlobe === 'function') {
+                addTiangongToGlobe(tiangongData);
+                console.log('✅ Live Tiangong data sent to globe');
+            } else {
+                console.log('Tiangong data ready but no callback set:', tiangongData);
+            }
+            return;
+        }
+        
+    } catch (error) {
+        console.warn('Failed to fetch live Tiangong position from all APIs:', error);
+    }
     
-    // Create a realistic simulated orbit for Tiangong
+    // Fallback: Create a realistic simulated orbit for Tiangong if APIs fail
+    console.log('Using simulated Tiangong position as fallback...');
     const currentTime = Date.now() / 1000;
     const orbitPeriod = 5500; // ~92 minutes in seconds
     const orbitPosition = (currentTime % orbitPeriod) / orbitPeriod; // 0 to 1
@@ -269,7 +373,7 @@ async function loadTiangongPosition() {
     const lng = (orbitPosition * 360 - 180) % 360; // Complete orbit
     const adjustedLng = lng > 180 ? lng - 360 : lng;
     
-    const simulatedTiangongData = {
+    const fallbackTiangongData = {
         lat: lat,
         lng: adjustedLng,
         altitude: 340 + Math.sin(orbitPosition * 4 * Math.PI) * 5, // Slight altitude variation
@@ -277,11 +381,11 @@ async function loadTiangongPosition() {
         isSimulated: true
     };
     
-    console.log('🏗️ Using simulated Tiangong orbital position:', simulatedTiangongData);
+    console.log('Fallback Tiangong Position:', fallbackTiangongData);
     
     if (typeof addTiangongToGlobe === 'function') {
-        addTiangongToGlobe(simulatedTiangongData);
-        console.log('✅ Simulated Tiangong data sent to globe');
+        addTiangongToGlobe(fallbackTiangongData);
+        console.log('✅ Simulated Tiangong fallback data sent to globe');
     } else {
         console.log('❌ Tiangong data ready but no callback function set');
     }
@@ -292,17 +396,15 @@ async function loadAstronautData() {
     console.log('👨‍🚀 Loading astronaut data...');
     
     try {
-        // Try simpler proxy services that work better with GitHub Pages
+        // Try multiple CORS proxies that work with GitHub Pages
         let astronautData = null;
         
-        // First try: thingproxy (reliable for GitHub Pages)
+        // First try: allorigins raw proxy
         try {
-            const proxyUrl = 'https://thingproxy.freeboard.io/fetch/';
-            const targetUrl = 'http://api.open-notify.org/astros.json';
-            const response = await fetch(proxyUrl + targetUrl);
+            const response = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://api.open-notify.org/astros.json'));
             const data = await response.json();
             
-            console.log('👨‍🚀 Astronaut API Response (via thingproxy):', data);
+            console.log('👨‍🚀 Astronaut API Response (via allorigins raw):', data);
             
             if (data.people && data.number) {
                 // Group astronauts by spacecraft
@@ -322,16 +424,16 @@ async function loadAstronautData() {
                 console.log(`👨‍🚀 ${data.number} people currently in space, grouped by craft:`, craftGroups);
             }
         } catch (e) {
-            console.warn('thingproxy failed for astronauts:', e);
+            console.warn('allorigins raw proxy failed for astronauts:', e);
         }
         
-        // Second try: codetabs proxy
+        // Second try: jsonp.afeld.me proxy
         if (!astronautData) {
             try {
-                const response = await fetch('https://api.codetabs.com/v1/proxy?quest=http://api.open-notify.org/astros.json');
+                const response = await fetch('https://jsonp.afeld.me/?url=https://api.open-notify.org/astros.json');
                 const data = await response.json();
                 
-                console.log('👨‍🚀 Astronaut API Response (via codetabs):', data);
+                console.log('👨‍🚀 Astronaut API Response (via jsonp.afeld):', data);
                 
                 if (data.people && data.number) {
                     const craftGroups = {};
@@ -350,7 +452,40 @@ async function loadAstronautData() {
                     console.log(`👨‍🚀 ${data.number} people currently in space, grouped by craft:`, craftGroups);
                 }
             } catch (e) {
-                console.warn('codetabs proxy failed for astronauts:', e);
+                console.warn('jsonp.afeld proxy failed for astronauts:', e);
+            }
+        }
+        
+        // Third try: cors.sh proxy
+        if (!astronautData) {
+            try {
+                const response = await fetch('https://cors.sh/https://api.open-notify.org/astros.json', {
+                    headers: {
+                        'x-requested-with': 'XMLHttpRequest'
+                    }
+                });
+                const data = await response.json();
+                
+                console.log('👨‍🚀 Astronaut API Response (via cors.sh):', data);
+                
+                if (data.people && data.number) {
+                    const craftGroups = {};
+                    data.people.forEach(person => {
+                        if (!craftGroups[person.craft]) {
+                            craftGroups[person.craft] = [];
+                        }
+                        craftGroups[person.craft].push(person);
+                    });
+                    
+                    astronautData = {
+                        number: data.number,
+                        craftGroups: craftGroups
+                    };
+                    
+                    console.log(`👨‍🚀 ${data.number} people currently in space, grouped by craft:`, craftGroups);
+                }
+            } catch (e) {
+                console.warn('cors.sh proxy failed for astronauts:', e);
             }
         }
         
@@ -358,6 +493,7 @@ async function loadAstronautData() {
             // Call astronaut callback if set
             if (typeof addAstronautPanelToPage === 'function') {
                 addAstronautPanelToPage(astronautData);
+                console.log('✅ Live astronaut data sent to page');
             } else {
                 console.log('👨‍🚀 Astronaut data ready but no callback set:', astronautData);
             }
