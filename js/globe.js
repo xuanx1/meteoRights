@@ -278,7 +278,7 @@ async function loadAstronautData() {
     console.log('👨‍🚀 Loading astronaut data...');
     
     try {
-        const response = await fetch('http://api.open-notify.org/astros.json');
+        const response = await fetch('https://api.open-notify.org/astros.json');
         const data = await response.json();
         
         console.log('👨‍🚀 Astronaut API Response:', data);
